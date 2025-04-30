@@ -202,7 +202,7 @@ class DataFlowGraph:
         https://dl.acm.org/doi/pdf/10.1145/357062.357071
         The time complexity of the algorithm is O(|E| * log |V|)
         Afterwards we just travers the immediate traverse the immediate dominator tree
-          in O(|E|) to get all nodes.
+          in O(|E|) to get all dominator nodes..
         # all enumeration starting from zero
         # pred -> in_edges
         # succ -> out_edges
