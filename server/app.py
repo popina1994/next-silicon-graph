@@ -84,7 +84,7 @@ def main():
     PORT = 10000
     init_logging(app, log_level, LOG_FILE_NAME)
 
-    app.run(host=HOST_IP, port=PORT, debug=True)
+    app.run(host=HOST_IP, port=PORT, debug=False)
 
 
 if __name__ == '__main__':

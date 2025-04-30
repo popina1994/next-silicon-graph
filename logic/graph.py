@@ -157,7 +157,7 @@ class DataFlowGraph:
 
 
     def compress(self, node_v: Node):
-        print("NODE_V", node_v, self.ancestor[node_v])
+        # print("NODE_V", node_v, self.ancestor[node_v])
         if self.ancestor[node_v] is not None and self.ancestor[self.ancestor[node_v]] is not None:
             self.compress(self.ancestor[node_v])
             if self.semi[self.label[self.ancestor[node_v]]] < self.semi[self.label[node_v]]:
@@ -175,7 +175,7 @@ class DataFlowGraph:
 
     def compute_semi_dominators_and_implicit_dominators(self):
         for node_w in self.preorder_nodes[:0:-1]:
-            print("START", node_w)
+            # print("START", node_w)
             for prev_node in node_w.get_in_edges():
                 node_u = self.eval(prev_node)
                 if self.semi[node_u] < self.semi[node_w]:
@@ -198,8 +198,11 @@ class DataFlowGraph:
 
 
     """
-        The algorithm is the implementation of the following algorithm:
+        The algorithm is the implementation of the following immediate dominator set algorithm:
         https://dl.acm.org/doi/pdf/10.1145/357062.357071
+        The time complexity of the algorithm is O(|E| * log |V|)
+        Afterwards we just travers the immediate traverse the immediate dominator tree
+          in O(|E|) to get all nodes.
         # all enumeration starting from zero
         # pred -> in_edges
         # succ -> out_edges
@@ -240,6 +243,7 @@ class DataFlowGraph:
 
     A node is considered a dominator of the target node if removing it (skipping it)
     makes the target node unreachable from the start node.
+    The time complexity is O(|E| * |V|)
 
     Args:
         reach_node_name (str): The name of the target node for which dominators
