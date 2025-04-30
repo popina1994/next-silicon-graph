@@ -1,5 +1,11 @@
-local_build=0
+local_build=1
 
+pytest -v --capture=no
+status=$?
+if [ $status -ne 0 ]; then
+  echo "One of the tests is failing, prematurely exiting the build"
+  exit
+fi
 pip uninstall -y app-come-before
 rm dist/*
 python3 setup.py sdist bdist_wheel
