@@ -42,8 +42,9 @@ def create_app():
 
             # Extract edges
             edge_names = pg_graph.edges()
-            data_flow_graph = DataFlowGraph(node_names, edge_names, start_node_name)
+            data_flow_graph = DataFlowGraph(node_names, edge_names, start_node_name, app.logger)
             dominate_node_names = data_flow_graph.get_dominate_nodes(reach_node_name)
+
             return jsonify({"come_before_node": dominate_node_names})
 
         except NodeDoesNotExist as e:
@@ -56,8 +57,6 @@ def create_app():
             app.logger.error(str_error + data_str)
             error_json = generate_error(str_error)
             return error_json
-
-
 
     return app
 

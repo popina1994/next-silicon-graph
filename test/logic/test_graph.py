@@ -1,20 +1,18 @@
 import unittest
-from logic.graph import DataFlowGraph
-
-def add(a, b):
-    return a + b
+from logic.graph import DataFlowGraph, DominateNodesSearchAlg
+import logging
 
 class TestDataFlowGraph(unittest.TestCase):
-
-    def test_add_positive_numbers(self):
-        self.assertEqual(add(2, 3), 5)
+    def setUp(self) -> None:
+        self.logger = logging.getLogger('dummy_logger')
+        self.logger.setLevel(logging.DEBUG)
 
     def test_dgf_create_simple(self):
         list_node_names = ["R", "C", "F", "G", "I", "J", "K", "B", "E", "A", "H", "D", "L"]
         list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"), ("J", "I"), ("I", "K"), ("K", "I"), ("H", "K"),
         ("R", "B"), ("R", "A"), ("B", "A"), ("B", "D"), ("B", "E"),
         ("E", "H"), ("H", "E"), ("A", "D"), ("D", "L"), ("L", "H")]
-        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R", self.logger)
         for node_name in list_node_names:
             can_reach = dfg.can_reach_node_test_api(node_name, None)
             self.assertEqual(dfg.can_reach_node_test_api(node_name, None), True)
@@ -25,13 +23,13 @@ class TestDataFlowGraph(unittest.TestCase):
         list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"), ("J", "I"), ("I", "K"), ("K", "I"), ("H", "K"),
         ("R", "B"), ("R", "A"), ("B", "A"), ("B", "D"), ("B", "E"),
         ("E", "H"), ("H", "E"), ("A", "D"), ("D", "L"), ("L", "H")]
-        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R", self.logger)
         map_node_name_dominator_names = {"R": [], "I": ["R"], "K": ["R"], "C": ["R"],
                                         "H": ["R"], "E": ["R"], "A": ["R"], "D":["R"], "B": ["R"], "L": ["D", "R"],
                                         "F": ["C", "R"], "G": ["C", "R"],
                                         "J": ["C", "G", "R"]}
         for node_name in list_node_names:
-            dominate_node_names = dfg.get_dominate_nodes(node_name)
+            dominate_node_names = dfg.get_dominate_nodes(node_name, DominateNodesSearchAlg.REACHABILITY)
             self.assertEqual(set(dominate_node_names), set(map_node_name_dominator_names[node_name]))
 
     def test_enumerate_nodes(self):
@@ -39,7 +37,7 @@ class TestDataFlowGraph(unittest.TestCase):
         list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"),  ("I", "K"), ("K", "I"), ("J", "I"),
         ("R", "B"), ("R", "A"), ("B", "E"), ("B", "A"), ("B", "D"),
         ("E", "H"), ("H", "E"), ("H", "K"), ("A", "D"), ("D", "L"), ("L", "H")]
-        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R", self.logger)
         dfg.dfs_enumerate_and_build_tree()
         nodes = dfg.get_nodes()
         nn_to_edg = {node.get_name() : node for node in nodes}
@@ -67,8 +65,8 @@ class TestDataFlowGraph(unittest.TestCase):
         list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"),  ("I", "K"), ("K", "I"), ("J", "I"),
         ("R", "B"), ("R", "A"), ("B", "E"), ("B", "A"), ("B", "D"),
         ("E", "H"), ("H", "E"), ("H", "K"), ("A", "D"), ("D", "L"), ("L", "H")]
-        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
-        dom_nodes_j = dfg.lengauer_tarjan_fast_algorithm("J")
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R", self.logger)
+        dom_nodes_j = dfg.get_dominate_nodes("J", DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED)
         self.assertEqual(set(dom_nodes_j), set(["C","R", "G"]))
 
 
@@ -77,13 +75,13 @@ class TestDataFlowGraph(unittest.TestCase):
         list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"),  ("I", "K"), ("K", "I"), ("J", "I"),
         ("R", "B"), ("R", "A"), ("B", "E"), ("B", "A"), ("B", "D"),
         ("E", "H"), ("H", "E"), ("H", "K"), ("A", "D"), ("D", "L"), ("L", "H")]
-        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R", self.logger)
         map_node_name_dominator_names = {"R": [], "I": ["R"], "K": ["R"], "C": ["R"],
                                         "H": ["R"], "E": ["R"], "A": ["R"], "D":["R"], "B": ["R"], "L": ["D", "R"],
                                         "F": ["C", "R"], "G": ["C", "R"],
                                         "J": ["C", "G", "R"]}
         for node_name in list_node_names:
-            dominate_node_names = dfg.lengauer_tarjan_fast_algorithm(node_name)
+            dominate_node_names = dfg.get_dominate_nodes(node_name, DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED)
             self.assertEqual(set(dominate_node_names), set(map_node_name_dominator_names[node_name]))
 
 
