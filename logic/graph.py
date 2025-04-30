@@ -147,7 +147,7 @@ class DataFlowGraph:
         map_visit_state[cur_node] = VisitState.VISITED
         self.preorder_nodes[self.cur_preorder_idx] = cur_node
         cur_node.set_dfs_node_id(self.cur_preorder_idx)
-        logging.info(f"Enumerated node {cur_node} by {self.cur_preorder_idx}")
+        self.logger.info(f"Enumerated node {cur_node} by {self.cur_preorder_idx}")
         for adj_node in cur_node.get_out_edges():
             if map_visit_state[adj_node] == VisitState.NOT_VISITED:
                 adj_node.set_parent_node(cur_node)
@@ -155,7 +155,7 @@ class DataFlowGraph:
 
 
     def dfs_enumerate_and_build_tree(self):
-        logging.info("Starting to enumerate nodes by DFS")
+        self.logger.info("Starting to enumerate nodes by DFS")
         map_visit_state = {node: VisitState.NOT_VISITED for node in self.nodes}
         self.preorder_nodes = [None] * len(self.nodes)
         self.cur_preorder_idx = -1
@@ -197,7 +197,7 @@ class DataFlowGraph:
                 self.dom[node_v] = node_u if self.semi[node_u] < self.semi[node_v] else node_w.get_parent_node()
 
 
-    def explicit_semi_dominator(self):
+    def explicit_dominator(self):
         for node_w in self.preorder_nodes[1:]:
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
                 self.dom[node_w] = self.dom[self.dom[node_w]]
@@ -209,12 +209,13 @@ class DataFlowGraph:
         The algorithm is one to one implementation of the following immediate dominator set algorithm:
         https://dl.acm.org/doi/pdf/10.1145/357062.357071 know ans Lengauer-Tarjan algorithm.
         The time complexity of the algorithm is O(|E| * log |V|)
-        Afterwards we just travers the immediate traverse the immediate dominator tree
-          in the worst case in O(|E|) to get all dominator nodes (come-before-nodes)
 
-        I am listing renames I introduces and in the type setting you have type definitions that satisfy the
-        types from the paper
-        all enumeration starting from zero
+        Afterwards we just traverse from the reach node through
+        immediate dominator nodes to the entry node in the worst case in
+        O(|E|) to get all dominator nodes (come-before-nodes).
+
+        I am listing renames I introduced and in the type setting you have type definitions that satisfy the types from the paper
+        All enumerations in the implementation start from zero
         pred -> in_edges
         succ -> out_edges
         parent ->parent
@@ -224,20 +225,21 @@ class DataFlowGraph:
         dom -dom
     """
     def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node):
+        self.logger.info("Starting DFS to enumerate vertices")
         self.dfs_enumerate_and_build_tree()
+        self.logger.info("Finished DFS and enumeration of vertices")
         self.semi = {node: node.get_dfs_node_id() for node in self.nodes}
         self.bucket = {node: set() for node in self.nodes}
         self.dom = {node: None for node in self.nodes}
 
         self.ancestor = {node: None for node in self.nodes}
         self.label = {node: node for node in self.nodes}
+        self.logger.info("Starting compute semi dominators and implicit dominators")
         self.compute_semi_dominators_and_implicit_dominators()
-        self.explicit_semi_dominator()
-        # for node, node_dom in self.dom.items():
-        #     if node_dom is not None:
-        #         print("NODE DOMINATES", node.get_name(), node_dom.get_name())
-        #     else:
-        #         print("NODE DOMINATES", node.get_name(), "ONE THAT RULES ABOVE")
+        self.logger.info("Ending compute semi dominators and implicit dominators")
+        self.logger.info("Starting building immediate dominators tree")
+        self.explicit_dominator()
+        self.logger.info("Ending building immediate dominators tree")
 
         imm_dom_node = self.dom[reach_node]
         dom_nodes_a = []
@@ -251,7 +253,7 @@ class DataFlowGraph:
         return dom_node_names
 
     """
-        The time complexity is O(|E| * |V|)
+        The time complexity of finding all come-before nodes for reach node reach_node is O(|E| * |V|).
         First we need to check if the vertex reach_node is reachable from the start node.
         If not, there are no come-before nodes.
         For each vertex v in the graph, the algorithm check if the node reach_node is reachable.
