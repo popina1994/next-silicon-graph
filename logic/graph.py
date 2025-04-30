@@ -1,9 +1,15 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set
 from enum import Enum
 from collections import deque
 import logging
 
 class Node:
+    name: str
+    out_edges: List['Node']
+    in_edges: List['Node']
+    dfs_node_id: int
+    parent_node: 'Node'
+
     def __init__(self, name: str):
         self.name = name
         self.out_edges = []
@@ -51,6 +57,14 @@ class VisitState(Enum):
     VISITED = 3
 
 class DataFlowGraph:
+    nodes: List[Node]
+    start_node: Node
+    preorder_nodes: List[Node]
+    semi: Dict[Node, int]
+    bucket: Dict[Node, Set[Node]]
+    ancestor: Dict[Node, Node]
+    label: Dict[Node, Node]
+
     def __init__(self, node_names: List[str], edges: List[Tuple[str, str]], start_node_name: str):
         self.nodes = [None] * len(node_names)
         self.map_name_to_node = {}
@@ -136,6 +150,70 @@ class DataFlowGraph:
         self.cur_preorder_idx = -1
         self.dfs_enumerate_and_build_tree_wrapper(self.start_node, map_visit_state)
 
+
+    def link(self, node_v: Node, node_w: Node)->None:
+        self.ancestor[node_w] = node_v.get_dfs_node_id()
+
+    def compress(self, node_v: Node):
+        if self.ancestor[self.ancestor[node_v]] is not None:
+            self.compress(self.ancestor[node_v])
+            if self.semi(self.label[self.ancestor[v]]) < self.semi(self.label(node_v)):
+                self.label[node_v] = self.label[self.ancestor[node_v]]
+            self.ancestor[node_v] = self.ancestor[self.ancestor[node_v]]
+
+
+    def eval(self, node_v: Node) -> Node:
+        if self.ancestor[node_v] == 0:
+            return node_v
+        else:
+            self.compress(node_v)
+            return self.label[node_v]
+
+
+    def compute_semi_dominators_and_implicit_dominators(self):
+        for node_w in self.preorder_nodes[:0:-1]:  # From last to second element
+            for prev_node in node_w.get_in_edges():
+                node_u = self.eval(prev_node)
+                if self.semi(node_u) < self.semi(node_w):
+                    self.semi[node_w] = self.semi[node_u]
+            self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
+            self.link(node_w.get_parent_node(), node_w)
+            bucket_par_w_copy = self.bucket[node_w.get_parent_node()].copy()
+            for node_v in bucket_par_w_copy:
+                self.bucket[node_w.get_parent_node()].remove(node_v)
+                node_u = self.eval(node_v)
+                self.dom[node_v] = node_u if self.semi[node_u] < self.semi[node_v] else node_w.get_parent_node()
+
+    def explicit_semi_dominator(self):
+        for node_w in self.preorder_nodes[1:]:
+            if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
+                self.dom[node_w] = self.dom[self.dom[w]]
+        self.dom[self.start_node] = None
+
+
+
+    """
+        The algorithm is the implementation of the following algorithm:
+        https://dl.acm.org/doi/pdf/10.1145/357062.357071
+        # all enumeration starting from zero
+        # pred -> in_edges
+        # succ -> out_edges
+        # parent ->parent
+        # vertex -> preorder_nodes
+        # semi ->
+        # bucket
+        # domi
+    """
+    def lengauer_tarjan_fast_algorithm(self, reach_node_name: str):
+        self.dfs_enumerate_and_build_tree()
+        self.semi = {node: node.get_dfs_node_id() for node in self.nodes}
+        self.bucket = {node: set() for node in self.nodes}
+        self.dom = {node: None for node in self.nodes}
+
+        self.ancestor = {node: None for node in self.nodes}
+        self.label = {node: node for node in self.nodes}
+        self.compute_semi_dominators_and_implicit_dominators()
+        self.explicit_semi_dominator()
     """
     Find the dominator nodes for a given target node in a graph.
 
