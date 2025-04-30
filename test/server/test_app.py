@@ -1,7 +1,7 @@
 import unittest
 from server.app import create_app
 
-class TestMathFunctions(unittest.TestCase):
+class TestFlaskApp(unittest.TestCase):
     def setUp(self):
         app_server = create_app()
         self.client = app_server.test_client()
@@ -12,7 +12,7 @@ class TestMathFunctions(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"Error": "No entry node is specified"})
 
-    @unittest.skip("This test is skipped intentionally")
+    # @unittest.skip("This test is skipped intentionally")
     def test_no_destinaton_node(self):
         response = self.client.post("/server", json={"e1": "1"})
         self.assertEqual(response.status_code, 200)

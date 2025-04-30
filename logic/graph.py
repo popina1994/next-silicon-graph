@@ -24,6 +24,9 @@ class Node:
     def __str__(self) -> str:
         return self.name
 
+    def get_name(self) -> str:
+        return self.name
+
 
 class NodeDoesNotExist(Exception):
     pass
@@ -72,7 +75,7 @@ class DataFlowGraph:
     Notes:
         Complexity: O(E + V) in the worst case.
     """
-    def reach_node(self, reach_node: Node, skip_node: Node):
+    def can_reach_node(self, reach_node: Node, skip_node: Node):
         map_visit_state = {}
 
         for node in self.nodes:
@@ -93,6 +96,11 @@ class DataFlowGraph:
                     dq_to_visit.append(adj_node)
 
         return False
+
+    def can_reach_node_test_api(self, reach_node_name: str, skip_node_name: str):
+        reach_node = self.map_name_to_node[reach_node_name]
+        skip_node = self.map_name_to_node[skip_node_name] if skip_node_name is not None else None
+        return self.can_reach_node(reach_node, skip_node)
 
 
     """
@@ -115,16 +123,18 @@ class DataFlowGraph:
                            in the graph.
     """
     def get_dominate_nodes(self, reach_node_name: str):
+        if reach_node_name == self.start_node.get_name():
+            return []
         if not reach_node_name in self.map_name_to_node:
             raise NodeDoesNotExist(f"Node to reach {reach_node_name} does not exist")
         reach_node = self.map_name_to_node[reach_node_name]
-        if not self.reach_node(reach_node, None):
+        if not self.can_reach_node(reach_node, None):
             return []
         dominate_nodes = [str(self.start_node)]
         for skip_node in self.nodes:
             if skip_node == self.start_node or skip_node == reach_node:
                 continue
-            if not self.reach_node(reach_node, skip_node):
+            if not self.can_reach_node(reach_node, skip_node):
                 dominate_nodes.append(str(skip_node))
 
         return dominate_nodes
