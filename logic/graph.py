@@ -6,14 +6,16 @@ import logging
 class Node:
     def __init__(self, name: str):
         self.name = name
-        self.out_edges = set()
-        self.in_edges = set()
+        self.out_edges = []
+        self.in_edges = []
+        self.dfs_node_id = -1
+        self.parent_node = None
 
-    def add_out_edges(self, out_node):
-        self.out_edges.add(out_node)
+    def add_out_edges(self, out_node: 'Node'):
+        self.out_edges.append(out_node)
 
-    def add_in_edges(self, in_node):
-        self.in_edges.add(in_node)
+    def add_in_edges(self, in_node: 'Node'):
+        self.in_edges.append(in_node)
 
     def get_out_edges(self):
         return self.out_edges
@@ -23,6 +25,18 @@ class Node:
 
     def __str__(self) -> str:
         return self.name
+
+    def set_dfs_node_id(self, node_id: int):
+        self.dfs_node_id = node_id
+
+    def get_dfs_node_id(self)-> int:
+        return self.dfs_node_id
+
+    def set_parent_node(self, par_node: 'Node'):
+        self.parent_node = par_node
+
+    def get_parent_node(self):
+        return self.parent_node
 
     def get_name(self) -> str:
         return self.name
@@ -60,6 +74,9 @@ class DataFlowGraph:
             node_out.add_in_edges(node_in)
 
 
+    def get_nodes(self)->List[Node]:
+        return self.nodes.copy()
+
     """
     Determines whether the reach_node is reachable from the start_node,
     skipping a specified skip_node, using BFS traversal.
@@ -76,10 +93,7 @@ class DataFlowGraph:
         Complexity: O(E + V) in the worst case.
     """
     def can_reach_node(self, reach_node: Node, skip_node: Node):
-        map_visit_state = {}
-
-        for node in self.nodes:
-            map_visit_state[node] = VisitState.NOT_VISITED
+        map_visit_state= {node: VisitState.NOT_VISITED for node in self.nodes}
         dq_to_visit = deque()
 
         dq_to_visit.append(self.start_node)
@@ -102,6 +116,25 @@ class DataFlowGraph:
         skip_node = self.map_name_to_node[skip_node_name] if skip_node_name is not None else None
         return self.can_reach_node(reach_node, skip_node)
 
+    def dfs_enumerate_and_build_tree_wrapper(self, cur_node: Node,
+                                             map_visit_state: Dict[Node, VisitState]):
+        self.cur_preorder_idx += 1
+        map_visit_state[cur_node] = VisitState.VISITED
+        self.preorder_nodes[self.cur_preorder_idx] = cur_node
+        cur_node.set_dfs_node_id(self.cur_preorder_idx)
+        logging.info(f"Enumerated node {cur_node} by {self.cur_preorder_idx}")
+        for adj_node in cur_node.get_out_edges():
+            if map_visit_state[adj_node] == VisitState.NOT_VISITED:
+                adj_node.set_parent_node(cur_node)
+                self.dfs_enumerate_and_build_tree_wrapper(adj_node, map_visit_state)
+
+
+    def dfs_enumerate_and_build_tree(self):
+        logging.info("Starting to enumerate nodes by DFS")
+        map_visit_state = {node: VisitState.NOT_VISITED for node in self.nodes}
+        self.preorder_nodes = [None] * len(self.nodes)
+        self.cur_preorder_idx = -1
+        self.dfs_enumerate_and_build_tree_wrapper(self.start_node, map_visit_state)
 
     """
     Find the dominator nodes for a given target node in a graph.

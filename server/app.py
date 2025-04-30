@@ -22,7 +22,6 @@ def create_app():
 
         if not 'h' in data_json:
             str_error = "No desination node in the graph is specified"
-            print("WTF")
             app.logger.error(str_error + data_str)
             error_json = generate_error(str_error)
             return error_json
