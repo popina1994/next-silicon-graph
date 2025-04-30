@@ -64,6 +64,7 @@ class DataFlowGraph:
     bucket: Dict[Node, Set[Node]]
     ancestor: Dict[Node, Node]
     label: Dict[Node, Node]
+    dom: Dict[Node, Node]
 
     def __init__(self, node_names: List[str], edges: List[Tuple[str, str]], start_node_name: str):
         self.nodes = [None] * len(node_names)
@@ -152,18 +153,20 @@ class DataFlowGraph:
 
 
     def link(self, node_v: Node, node_w: Node)->None:
-        self.ancestor[node_w] = node_v.get_dfs_node_id()
+        self.ancestor[node_w] = self.preorder_nodes[node_v.get_dfs_node_id()]
+
 
     def compress(self, node_v: Node):
-        if self.ancestor[self.ancestor[node_v]] is not None:
+        print("NODE_V", node_v, self.ancestor[node_v])
+        if self.ancestor[node_v] is not None and self.ancestor[self.ancestor[node_v]] is not None:
             self.compress(self.ancestor[node_v])
-            if self.semi(self.label[self.ancestor[v]]) < self.semi(self.label(node_v)):
+            if self.semi[self.label[self.ancestor[node_v]]] < self.semi[self.label[node_v]]:
                 self.label[node_v] = self.label[self.ancestor[node_v]]
             self.ancestor[node_v] = self.ancestor[self.ancestor[node_v]]
 
 
     def eval(self, node_v: Node) -> Node:
-        if self.ancestor[node_v] == 0:
+        if self.ancestor[node_v] is None:
             return node_v
         else:
             self.compress(node_v)
@@ -171,10 +174,11 @@ class DataFlowGraph:
 
 
     def compute_semi_dominators_and_implicit_dominators(self):
-        for node_w in self.preorder_nodes[:0:-1]:  # From last to second element
+        for node_w in self.preorder_nodes[:0:-1]:
+            print("START", node_w)
             for prev_node in node_w.get_in_edges():
                 node_u = self.eval(prev_node)
-                if self.semi(node_u) < self.semi(node_w):
+                if self.semi[node_u] < self.semi[node_w]:
                     self.semi[node_w] = self.semi[node_u]
             self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
             self.link(node_w.get_parent_node(), node_w)
@@ -184,10 +188,11 @@ class DataFlowGraph:
                 node_u = self.eval(node_v)
                 self.dom[node_v] = node_u if self.semi[node_u] < self.semi[node_v] else node_w.get_parent_node()
 
+
     def explicit_semi_dominator(self):
         for node_w in self.preorder_nodes[1:]:
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
-                self.dom[node_w] = self.dom[self.dom[w]]
+                self.dom[node_w] = self.dom[self.dom[node_w]]
         self.dom[self.start_node] = None
 
 
@@ -214,6 +219,22 @@ class DataFlowGraph:
         self.label = {node: node for node in self.nodes}
         self.compute_semi_dominators_and_implicit_dominators()
         self.explicit_semi_dominator()
+        # for node, node_dom in self.dom.items():
+        #     if node_dom is not None:
+        #         print("NODE DOMINATES", node.get_name(), node_dom.get_name())
+        #     else:
+        #         print("NODE DOMINATES", node.get_name(), "ONE THAT RULES ABOVE")
+
+        reach_node = self.map_name_to_node[reach_node_name]
+        imm_dom_node = self.dom[reach_node]
+        dom_nodes_a = []
+        while imm_dom_node is not None:
+            dom_nodes_a.append(imm_dom_node)
+            imm_dom_node = self.dom[imm_dom_node]
+
+        dom_node_names = [node.get_name() for node in dom_nodes_a]
+
+        return dom_node_names
     """
     Find the dominator nodes for a given target node in a graph.
 

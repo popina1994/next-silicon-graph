@@ -61,5 +61,31 @@ class TestDataFlowGraph(unittest.TestCase):
             else:
                 self.assertEqual(node.get_parent_node().get_name(), parent_nodes[node_name].get_name())
 
+
+    def test_lengauer_tarjan_fast_algorithm(self):
+        list_node_names = ["R", "C", "F", "I", "K", "G",  "J",  "B", "E", "H",  "A",  "D", "L"]
+        list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"),  ("I", "K"), ("K", "I"), ("J", "I"),
+        ("R", "B"), ("R", "A"), ("B", "E"), ("B", "A"), ("B", "D"),
+        ("E", "H"), ("H", "E"), ("H", "K"), ("A", "D"), ("D", "L"), ("L", "H")]
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        dom_nodes_j = dfg.lengauer_tarjan_fast_algorithm("J")
+        self.assertEqual(set(dom_nodes_j), set(["C","R", "G"]))
+
+
+    def test_dominate_nodes(self):
+        list_node_names = ["R", "C", "F", "I", "K", "G",  "J",  "B", "E", "H",  "A",  "D", "L"]
+        list_edge_names = [("R", "C"), ("C", "F"), ("C", "G"), ("F", "I"), ("G", "I"), ("G", "J"),  ("I", "K"), ("K", "I"), ("J", "I"),
+        ("R", "B"), ("R", "A"), ("B", "E"), ("B", "A"), ("B", "D"),
+        ("E", "H"), ("H", "E"), ("H", "K"), ("A", "D"), ("D", "L"), ("L", "H")]
+        dfg = DataFlowGraph(list_node_names, list_edge_names, "R")
+        map_node_name_dominator_names = {"R": [], "I": ["R"], "K": ["R"], "C": ["R"],
+                                        "H": ["R"], "E": ["R"], "A": ["R"], "D":["R"], "B": ["R"], "L": ["D", "R"],
+                                        "F": ["C", "R"], "G": ["C", "R"],
+                                        "J": ["C", "G", "R"]}
+        for node_name in list_node_names:
+            dominate_node_names = dfg.lengauer_tarjan_fast_algorithm(node_name)
+            self.assertEqual(set(dominate_node_names), set(map_node_name_dominator_names[node_name]))
+
+
 if __name__ == '__main__':
     unittest.main()
