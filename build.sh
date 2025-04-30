@@ -1,5 +1,5 @@
 # First try out everything for the local build then upload to pypi.
-local_build=1
+local_build=0
 
 pip uninstall -y app-come-before
 rm dist/*
