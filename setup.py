@@ -7,7 +7,8 @@ setup(
     install_requires=[
         'flask',
         'pygraphviz',
-        'pytest'
+        'pytest',
+        'pylint'
     ],
     entry_points={
         'console_scripts': [
