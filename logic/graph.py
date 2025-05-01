@@ -1,9 +1,12 @@
+"""
+Module providing a support for data flow graph.
+"""
 from typing import List, Dict, Tuple, Set
 from enum import Enum
 from collections import deque
-import logging
 
 class Node:
+    """ Class representing a node. """
     name: str
     out_edges: List['Node']
     in_edges: List['Node']
@@ -100,7 +103,9 @@ class DataFlowGraph:
     def get_nodes(self)->List[Node]:
         return self.nodes.copy()
 
-    """
+
+    def can_reach_node(self, reach_node: Node, skip_node: Node):
+        """
     Determines whether the reach_node is reachable from the start_node,
     skipping a specified skip_node, using BFS traversal.
 
@@ -115,7 +120,6 @@ class DataFlowGraph:
     Notes:
         Complexity: O(E + V) in the worst case.
     """
-    def can_reach_node(self, reach_node: Node, skip_node: Node):
         map_visit_state= {node: VisitState.NOT_VISITED for node in self.nodes}
         dq_to_visit = deque()
 
@@ -205,8 +209,11 @@ class DataFlowGraph:
 
 
 
-    """
-        The algorithm is one to one implementation of the following immediate dominator set algorithm:
+
+    def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node):
+        """
+        The algorithm is one to one implementation of the following immediate
+        dominator set algorithm:
         https://dl.acm.org/doi/pdf/10.1145/357062.357071 know ans Lengauer-Tarjan algorithm.
         The time complexity of the algorithm is O(|E| * log |V|)
 
@@ -214,7 +221,8 @@ class DataFlowGraph:
         immediate dominator nodes to the entry node in the worst case in
         O(|E|) to get all dominator nodes (come-before-nodes).
 
-        I am listing renames I introduced and in the type setting you have type definitions that satisfy the types from the paper
+        I am listing renames I introduced and in the type setting you have
+        type definitions that satisfy the types from the paper
         All enumerations in the implementation start from zero
         pred -> in_edges
         succ -> out_edges
@@ -224,7 +232,6 @@ class DataFlowGraph:
         bucket - bucket
         dom -dom
     """
-    def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node):
         self.logger.info("Starting DFS to enumerate vertices")
         self.dfs_enumerate_and_build_tree()
         self.logger.info("Finished DFS and enumeration of vertices")
@@ -252,15 +259,16 @@ class DataFlowGraph:
 
         return dom_node_names
 
-    """
-        The time complexity of finding all come-before nodes for reach node reach_node is O(|E| * |V|).
-        First we need to check if the vertex reach_node is reachable from the start node.
-        If not, there are no come-before nodes.
-        For each vertex v in the graph, the algorithm check if the node reach_node is reachable.
-        If the reach_node is not reachable, then the vertex v is a come-before-node.
 
-    """
     def get_dominate_nodes_reachability_alg(self, reach_node: Node):
+        """
+    The time complexity of finding all come-before nodes for reach node reach_node is O(|E| * |V|).
+    First we need to check if the vertex reach_node is reachable from the start node.
+    If not, there are no come-before nodes.
+    For each vertex v in the graph, the algorithm check if the node reach_node is reachable.
+    If the reach_node is not reachable, then the vertex v is a come-before-node.
+
+        """
         if not self.can_reach_node(reach_node, None):
             return []
         dominate_nodes = [str(self.start_node)]
@@ -272,31 +280,31 @@ class DataFlowGraph:
 
         return dominate_nodes
 
-    """
-    Find the dominator nodes for a given target node in a graph.
 
+    def get_dominate_nodes(self, reach_node_name: str,
+        search_alg: DominateNodesSearchAlg=
+        DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED) ->List[str]:
+        """
+    Find the dominator nodes for a given target node in a graph.
     A node is considered a dominator of the target node if all paths from the start node
     to the target node lead over the dominator node.
-
     Args:
         reach_node_name (str): The name of the target node for which dominators
-                               need to be identified.
-
+                            need to be identified.
     Returns:
         list of str: A list of node names that dominate the target node. For non-start node,
-                     this list will include the start node and any node whose removal makes
-                     the target node unreachable. If the reach node is start_node, this list will be empty.
-
+                    this list will include the start node and any node whose removal makes
+                    the target node unreachable. If the reach node is start_node, this list will be empty.
     Raises:
         NodeDoesNotExist: If the reach_node_name does not correspond to an existing node
                            in the graph.
     """
-    def get_dominate_nodes(self, reach_node_name: str, search_alg: DominateNodesSearchAlg=DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED) ->List[str]:
         if reach_node_name == self.start_node.get_name():
             return []
         if not reach_node_name in self.map_name_to_node:
             raise NodeDoesNotExist(f"Node to reach {reach_node_name} does not exist")
         reach_node = self.map_name_to_node[reach_node_name]
+        dominate_node_names = []
         if search_alg == DominateNodesSearchAlg.REACHABILITY:
             self.logger.info("Computing dominate nodes using reachability algorithm")
             dominate_node_names = self.get_dominate_nodes_reachability_alg(reach_node)
