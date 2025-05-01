@@ -11,7 +11,6 @@ If both process pass successfully, it will install the package on the machine an
 
 ## Build information
 
-Python test:
 ![CI](https://github.com/popina1994/next-silicon-graph/actions/workflows/python-package.yml/badge.svg)
-Python lint:
+
 ![CI](https://github.com/popina1994/next-silicon-graph/actions/workflows/pylint.yml/badge.svg)
