@@ -1,3 +1,6 @@
+"""
+Used for installing the packaged server version.
+"""
 from setuptools import setup, find_packages
 
 setup(

@@ -1,10 +1,16 @@
+"""
+Module providing a support for the handler of the REST requests.
+"""
+import logging
 from flask import Flask, request, jsonify
 import pygraphviz as pgv
-import logging
 from logic.graph import DataFlowGraph
 from logic.graph import NodeDoesNotExist
 
 def create_app():
+    """
+    Creates a Flask app API that is used to launch the app on the specific host and port.
+    """
     app = Flask(__name__)
 
     def generate_error(str_error: str):
@@ -16,19 +22,19 @@ def create_app():
         data_str = str(data_json)
         if not 'e1' in data_json:
             str_error = "No entry node is specified"
-            app.logger.error(str_error + data_str)
+            app.logger.error("%s, %s", str_error, data_str)
             error_json = generate_error(str_error)
             return error_json
 
         if not 'h' in data_json:
             str_error = "No desination node in the graph is specified"
-            app.logger.error(str_error + data_str)
+            app.logger.error("%s, %s", str_error, data_str)
             error_json = generate_error(str_error)
             return error_json
 
         if not 'graph' in data_json:
             str_error = "No graph is specified"
-            app.logger.error(str_error + data_str)
+            app.logger.error("%s, %s", str_error, data_str)
             error_json = generate_error(str_error)
             return error_json
 
@@ -49,19 +55,23 @@ def create_app():
 
         except NodeDoesNotExist as e:
             str_error =f"{e}"
-            app.logger.error(str_error + data_str)
+            app.logger.error("%s, %s", str_error, data_str)
             error_json = generate_error(str_error)
             return error_json
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError) as _:
             str_error = "Error in parsing dot string"
-            app.logger.error(str_error + data_str)
+            app.logger.error("%s, %s", str_error, data_str)
             error_json = generate_error(str_error)
             return error_json
 
     return app
 
-def init_logging(app, log_level, log_file_name):
 
+def init_logging(app, log_level, log_file_name):
+    """
+    Initializes logging including log_levle, file format, and
+    redirection to the file log_file_name
+    """
     file_handler = logging.FileHandler(log_file_name)
     file_handler.setLevel(log_level)
     log_format_str = '%(asctime)s - %(levelname)s - %(filename)s - line %(lineno)d - %(message)s'
@@ -76,14 +86,17 @@ def init_logging(app, log_level, log_file_name):
 
 
 def main():
+    """
+    Entry point to the main function of the server
+    """
     app = create_app()
     log_level = logging.DEBUG
-    LOG_FILE_NAME = 'app.log'
-    HOST_IP = '0.0.0.0'
-    PORT = 10000
-    init_logging(app, log_level, LOG_FILE_NAME)
+    log_file_name = 'app.log'
+    host_ip = '0.0.0.0'
+    port = 10000
+    init_logging(app, log_level, log_file_name)
 
-    app.run(host=HOST_IP, port=PORT, debug=False)
+    app.run(host=host_ip, port=port, debug=False)
 
 
 if __name__ == '__main__':

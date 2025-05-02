@@ -20,58 +20,109 @@ class Node:
         self.dfs_node_id = -1
         self.parent_node = None
 
+
     def add_out_edges(self, out_node: 'Node'):
+        """
+        Adds out edges in the data flow graph.
+        """
         self.out_edges.append(out_node)
 
+
     def add_in_edges(self, in_node: 'Node'):
+        """
+        Adds in edges in the data flow graph.
+        """
         self.in_edges.append(in_node)
 
+
     def get_out_edges(self):
+        """
+        Returns out edges in the data flow graph.
+        """
         return self.out_edges
 
+
     def get_in_edges(self):
+        """
+        Returns in edges in the data flow graph.
+        """
         return self.in_edges
 
     def __str__(self) -> str:
         return self.name
 
+
     def set_dfs_node_id(self, node_id: int):
+        """
+        Sets the id to  be node_id. Used to enumerate nodes in a dfs tree.
+        """
         self.dfs_node_id = node_id
 
+
     def get_dfs_node_id(self)-> int:
+        """
+        Gets the id to  be node_id.
+        """
         return self.dfs_node_id
 
+
     def set_parent_node(self, par_node: 'Node'):
+        """
+        Sets the parent node in DFS tree to par_node
+        """
         self.parent_node = par_node
 
+
     def get_parent_node(self):
+        """
+        Gets the parent node in DFS tree.
+        """
         return self.parent_node
 
+
     def get_name(self) -> str:
+        """
+        Returns the name of the node. It is unique.
+        """
         return self.name
 
 
 class NodeDoesNotExist(Exception):
-    pass
+    """
+    Exception class in the case the node does not exist in a data flow graph.
+    """
+
 
 class VisitState(Enum):
+    """
+    Enum Class used to track the state of a node in BFS and DFS.
+    """
     NOT_VISITED = 1
     VISITING = 2
     VISITED = 3
 
 
 class DominateNodesSearchAlg(Enum):
+    """
+    Enum class that specifies algorithms for solving dominate nodes
+    in the data flow graph problem.
+    """
     REACHABILITY = 1
     LENGAUER_TARJAN_NON_OPTIMIZED = 2
     #LENGAUER_TARJAN_OPTIMIZED  = 3
 
+
 class DataFlowGraph:
+    """
+    Class that implements data flow graphs. It supports reachability checks, and
+    computation of all the nodes that dominate the specific node.
+    """
     nodes: List[Node]
     start_node: Node
     preorder_nodes: List[Node]
     semi: Dict[Node, int]
     bucket: Dict[Node, Set[Node]]
-    ancestor: Dict[Node, Node]
+    ancestor: Dict[Node, Node | None]
     label: Dict[Node, Node]
     dom: Dict[Node, Node]
 
@@ -99,8 +150,13 @@ class DataFlowGraph:
             node_in.add_out_edges(node_out)
             node_out.add_in_edges(node_in)
 
+        self.cur_preorder_idx = None
+
 
     def get_nodes(self)->List[Node]:
+        """
+        Returns a lit of Nodes that compose the current data flow graph
+        """
         return self.nodes.copy()
 
 
@@ -140,6 +196,11 @@ class DataFlowGraph:
 
 
     def can_reach_node_test_api(self, reach_node_name: str, skip_node_name: str):
+        """
+        Wrapper around the function can_reach_node that is used for unit testing.
+        Instead of passing nodes reach_node and skip_node by instances, the function
+        passes the nodes by name
+        """
         reach_node = self.map_name_to_node[reach_node_name]
         skip_node = self.map_name_to_node[skip_node_name] if skip_node_name is not None else None
         return self.can_reach_node(reach_node, skip_node)
@@ -147,6 +208,11 @@ class DataFlowGraph:
 
     def dfs_enumerate_and_build_tree_wrapper(self, cur_node: Node,
                                              map_visit_state: Dict[Node, VisitState]):
+        """
+        It continues DFS search of a data flow graph by visiting current node cur_node,
+        updating dfs_node_id of cur_node to the next available id
+        updating the state of node in  map_visit_state
+        """
         self.cur_preorder_idx += 1
         map_visit_state[cur_node] = VisitState.VISITED
         self.preorder_nodes[self.cur_preorder_idx] = cur_node
@@ -159,6 +225,10 @@ class DataFlowGraph:
 
 
     def dfs_enumerate_and_build_tree(self):
+        """
+        Depth first search of data flow graph starting from start_node
+        where each node is enumerated in the order of a DFS search.
+        """
         self.logger.info("Starting to enumerate nodes by DFS")
         map_visit_state = {node: VisitState.NOT_VISITED for node in self.nodes}
         self.preorder_nodes = [None] * len(self.nodes)
@@ -167,10 +237,16 @@ class DataFlowGraph:
 
 
     def link(self, node_v: Node, node_w: Node)->None:
+        """
+        One to one mapping to the function in the paper
+        """
         self.ancestor[node_w] = self.preorder_nodes[node_v.get_dfs_node_id()]
 
 
     def compress(self, node_v: Node):
+        """
+        One to one mapping to the function in the paper
+        """
         if self.ancestor[node_v] is not None and self.ancestor[self.ancestor[node_v]] is not None:
             self.compress(self.ancestor[node_v])
             if self.semi[self.label[self.ancestor[node_v]]] < self.semi[self.label[node_v]]:
@@ -178,7 +254,10 @@ class DataFlowGraph:
             self.ancestor[node_v] = self.ancestor[self.ancestor[node_v]]
 
 
-    def eval(self, node_v: Node) -> Node:
+    def eval(self, node_v: Node | None) -> Node:
+        """
+        One to one mapping to the function in the paper
+        """
         if self.ancestor[node_v] is None:
             return node_v
         else:
@@ -187,6 +266,9 @@ class DataFlowGraph:
 
 
     def compute_semi_dominators_and_implicit_dominators(self):
+        """
+        Steps 2 and 3 of Lengauer-Tarjan algorithm
+        """
         for node_w in self.preorder_nodes[:0:-1]:
             for prev_node in node_w.get_in_edges():
                 node_u = self.eval(prev_node)
@@ -198,10 +280,16 @@ class DataFlowGraph:
             for node_v in bucket_par_w_copy:
                 self.bucket[node_w.get_parent_node()].remove(node_v)
                 node_u = self.eval(node_v)
-                self.dom[node_v] = node_u if self.semi[node_u] < self.semi[node_v] else node_w.get_parent_node()
+                if self.semi[node_u] < self.semi[node_v]:
+                    self.dom[node_v] = node_u
+                else:
+                    self.dom[node_v] = node_w.get_parent_node()
 
 
     def explicit_dominator(self):
+        """
+        Steps 4 and 3 of Lengauer-Tarjan algorithm
+        """
         for node_w in self.preorder_nodes[1:]:
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
                 self.dom[node_w] = self.dom[self.dom[node_w]]
@@ -294,7 +382,8 @@ class DataFlowGraph:
     Returns:
         list of str: A list of node names that dominate the target node. For non-start node,
                     this list will include the start node and any node whose removal makes
-                    the target node unreachable. If the reach node is start_node, this list will be empty.
+                    the target node unreachable. If the reach node is start_node,
+                    this list will be empty.
     Raises:
         NodeDoesNotExist: If the reach_node_name does not correspond to an existing node
                            in the graph.
