@@ -112,6 +112,96 @@ class DominateNodesSearchAlg(Enum):
     #LENGAUER_TARJAN_OPTIMIZED  = 3
 
 
+class LengauerTarjanAlgorithm:
+    """
+    Encapsulates the current state information used in
+    Lenagauer Tarjan Algorithm.
+    """
+    preorder_nodes: List[Node]
+    semi: Dict[Node, int]
+    bucket: Dict[Node, Set[Node]]
+    ancestor: Dict[Node, Node | None]
+    label: Dict[Node, Node]
+    dom: Dict[Node, Node]
+
+
+    def __init__(self, preorder_nodes: List[Node]) -> None:
+        self.preorder_nodes = preorder_nodes
+        self.semi = {node: node.get_dfs_node_id() for node in preorder_nodes}
+        self.bucket = {node: set() for node in preorder_nodes}
+        self.dom = {node: None for node in preorder_nodes}
+
+        self.ancestor = {node: None for node in preorder_nodes}
+        self.label = {node: node for node in preorder_nodes}
+
+
+    def get_immediate_domminator(self, node: Node)->Node:
+        """
+        After the algorithm finishes returns imme"""
+        return self.dom[node]
+
+
+    def link(self, node_v: Node, node_w: Node)->None:
+        """
+        One to one mapping to the function in the paper
+        """
+        self.ancestor[node_w] = self.preorder_nodes[node_v.get_dfs_node_id()]
+
+
+    def compress(self, node_v: Node):
+        """
+        One to one mapping to the function in the paper
+        """
+        if self.ancestor[node_v] is not None and self.ancestor[self.ancestor[node_v]] is not None:
+            self.compress(self.ancestor[node_v])
+            if self.semi[self.label[self.ancestor[node_v]]] < self.semi[self.label[node_v]]:
+                self.label[node_v] = self.label[self.ancestor[node_v]]
+            self.ancestor[node_v] = self.ancestor[self.ancestor[node_v]]
+
+
+    def eval(self, node_v: Node | None) -> Node:
+        """
+        One to one mapping to the function in the paper
+        """
+        if self.ancestor[node_v] is None: # pylint: disable=no-else-return
+            return node_v
+        else:
+            self.compress(node_v)
+            return self.label[node_v]
+
+
+    def compute_semi_dominators_and_implicit_dominators(self):
+        """
+        Steps 2 and 3 of Lengauer-Tarjan algorithm
+        """
+        for node_w in self.preorder_nodes[:0:-1]:
+            for prev_node in node_w.get_in_edges():
+                node_u = self.eval(prev_node)
+                if self.semi[node_u] < self.semi[node_w]:
+                    self.semi[node_w] = self.semi[node_u]
+            self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
+            self.link(node_w.get_parent_node(), node_w)
+            bucket_par_w_copy = self.bucket[node_w.get_parent_node()].copy()
+            for node_v in bucket_par_w_copy:
+                self.bucket[node_w.get_parent_node()].remove(node_v)
+                node_u = self.eval(node_v)
+                if self.semi[node_u] < self.semi[node_v]:
+                    self.dom[node_v] = node_u
+                else:
+                    self.dom[node_v] = node_w.get_parent_node()
+
+
+    def explicit_dominator(self, start_node: Node):
+        """
+        Steps 4 and 3 of Lengauer-Tarjan algorithm
+        """
+        for node_w in self.preorder_nodes[1:]:
+            if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
+                self.dom[node_w] = self.dom[self.dom[node_w]]
+        self.dom[start_node] = None
+
+
+
 class DataFlowGraph:
     """
     Class that implements data flow graphs. It supports reachability checks, and
@@ -207,6 +297,7 @@ class DataFlowGraph:
 
 
     def dfs_enumerate_and_build_tree_wrapper(self, cur_node: Node,
+                                             preorder_nodes: List[Node],
                                              map_visit_state: Dict[Node, VisitState]):
         """
         It continues DFS search of a data flow graph by visiting current node cur_node,
@@ -215,13 +306,13 @@ class DataFlowGraph:
         """
         self.cur_preorder_idx += 1
         map_visit_state[cur_node] = VisitState.VISITED
-        self.preorder_nodes[self.cur_preorder_idx] = cur_node
+        preorder_nodes[self.cur_preorder_idx] = cur_node
         cur_node.set_dfs_node_id(self.cur_preorder_idx)
         self.logger.info(f"Enumerated node {cur_node} by {self.cur_preorder_idx}")
         for adj_node in cur_node.get_out_edges():
             if map_visit_state[adj_node] == VisitState.NOT_VISITED:
                 adj_node.set_parent_node(cur_node)
-                self.dfs_enumerate_and_build_tree_wrapper(adj_node, map_visit_state)
+                self.dfs_enumerate_and_build_tree_wrapper(adj_node, preorder_nodes, map_visit_state)
 
 
     def dfs_enumerate_and_build_tree(self):
@@ -231,71 +322,11 @@ class DataFlowGraph:
         """
         self.logger.info("Starting to enumerate nodes by DFS")
         map_visit_state = {node: VisitState.NOT_VISITED for node in self.nodes}
-        self.preorder_nodes = [None] * len(self.nodes)
+        preorder_nodes = [None] * len(self.nodes)
         self.cur_preorder_idx = -1
-        self.dfs_enumerate_and_build_tree_wrapper(self.start_node, map_visit_state)
+        self.dfs_enumerate_and_build_tree_wrapper(self.start_node, preorder_nodes, map_visit_state)
 
-
-    def link(self, node_v: Node, node_w: Node)->None:
-        """
-        One to one mapping to the function in the paper
-        """
-        self.ancestor[node_w] = self.preorder_nodes[node_v.get_dfs_node_id()]
-
-
-    def compress(self, node_v: Node):
-        """
-        One to one mapping to the function in the paper
-        """
-        if self.ancestor[node_v] is not None and self.ancestor[self.ancestor[node_v]] is not None:
-            self.compress(self.ancestor[node_v])
-            if self.semi[self.label[self.ancestor[node_v]]] < self.semi[self.label[node_v]]:
-                self.label[node_v] = self.label[self.ancestor[node_v]]
-            self.ancestor[node_v] = self.ancestor[self.ancestor[node_v]]
-
-
-    def eval(self, node_v: Node | None) -> Node:
-        """
-        One to one mapping to the function in the paper
-        """
-        if self.ancestor[node_v] is None:
-            return node_v
-        else:
-            self.compress(node_v)
-            return self.label[node_v]
-
-
-    def compute_semi_dominators_and_implicit_dominators(self):
-        """
-        Steps 2 and 3 of Lengauer-Tarjan algorithm
-        """
-        for node_w in self.preorder_nodes[:0:-1]:
-            for prev_node in node_w.get_in_edges():
-                node_u = self.eval(prev_node)
-                if self.semi[node_u] < self.semi[node_w]:
-                    self.semi[node_w] = self.semi[node_u]
-            self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
-            self.link(node_w.get_parent_node(), node_w)
-            bucket_par_w_copy = self.bucket[node_w.get_parent_node()].copy()
-            for node_v in bucket_par_w_copy:
-                self.bucket[node_w.get_parent_node()].remove(node_v)
-                node_u = self.eval(node_v)
-                if self.semi[node_u] < self.semi[node_v]:
-                    self.dom[node_v] = node_u
-                else:
-                    self.dom[node_v] = node_w.get_parent_node()
-
-
-    def explicit_dominator(self):
-        """
-        Steps 4 and 3 of Lengauer-Tarjan algorithm
-        """
-        for node_w in self.preorder_nodes[1:]:
-            if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
-                self.dom[node_w] = self.dom[self.dom[node_w]]
-        self.dom[self.start_node] = None
-
-
+        return preorder_nodes
 
 
     def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node):
@@ -321,26 +352,23 @@ class DataFlowGraph:
         dom -dom
     """
         self.logger.info("Starting DFS to enumerate vertices")
-        self.dfs_enumerate_and_build_tree()
+        preorder_nodes = self.dfs_enumerate_and_build_tree()
         self.logger.info("Finished DFS and enumeration of vertices")
-        self.semi = {node: node.get_dfs_node_id() for node in self.nodes}
-        self.bucket = {node: set() for node in self.nodes}
-        self.dom = {node: None for node in self.nodes}
+        len_tar = LengauerTarjanAlgorithm(preorder_nodes)
 
-        self.ancestor = {node: None for node in self.nodes}
-        self.label = {node: node for node in self.nodes}
         self.logger.info("Starting compute semi dominators and implicit dominators")
-        self.compute_semi_dominators_and_implicit_dominators()
+        len_tar.compute_semi_dominators_and_implicit_dominators()
         self.logger.info("Ending compute semi dominators and implicit dominators")
+
         self.logger.info("Starting building immediate dominators tree")
-        self.explicit_dominator()
+        len_tar.explicit_dominator(self.start_node)
         self.logger.info("Ending building immediate dominators tree")
 
-        imm_dom_node = self.dom[reach_node]
+        imm_dom_node =  len_tar.get_immediate_domminator(reach_node)
         dom_nodes_a = []
         while imm_dom_node is not None:
             dom_nodes_a.append(imm_dom_node)
-            imm_dom_node = self.dom[imm_dom_node]
+            imm_dom_node = len_tar.get_immediate_domminator(imm_dom_node)
 
         dom_node_names = [node.get_name() for node in dom_nodes_a]
         dom_node_names.reverse()
@@ -361,7 +389,8 @@ class DataFlowGraph:
             return []
         dominate_nodes = [str(self.start_node)]
         for skip_node in self.nodes:
-            if skip_node == self.start_node or skip_node == reach_node:
+            if skip_node == self.start_node or \
+                skip_node == reach_node: # pylint: disable=consider-using-in
                 continue
             if not self.can_reach_node(reach_node, skip_node):
                 dominate_nodes.append(str(skip_node))
