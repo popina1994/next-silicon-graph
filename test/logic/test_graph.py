@@ -216,13 +216,13 @@ class TestDataFlowGraph(unittest.TestCase):
             self.logger.info("Successful for %s", node_name)
 
 
-    @unittest.skip("Skipping this test for now")
+    # @unittest.skip("Skipping this test for now")
     def test_large_data_flow_graphs_lengauer_tarjan(self):
         """
         Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
         for each node.
         """
-        dfg = TestDataFlowGraph.random_graph(300, 0.1, 0, self.logger)
+        dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)
         # print(dfg)
         for node in dfg.get_nodes():
             node_name = str(node)
@@ -239,13 +239,13 @@ class TestDataFlowGraph(unittest.TestCase):
             self.assertEqual(set(dominate_node_names_lt),
                              set(dominate_node_names_reach))
 
-    @unittest.skip("Skipping this test for now")
+    # @unittest.skip("Skipping this test for now")
     def test_large_data_flow_graphs_specialized(self):
         """
         Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
         for each node.
         """
-        dfg = TestDataFlowGraph.random_graph(300, 0.1, 0, self.logger)
+        dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)
         # print(dfg)
         for node in dfg.get_nodes():
             node_name = str(node)
