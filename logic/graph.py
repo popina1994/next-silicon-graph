@@ -127,8 +127,11 @@ class LengauerTarjanAlgorithm:
     dom: Dict[Node, Node]
 
 
-    def __init__(self, preorder_nodes: List[Node]) -> None:
-        sys.setrecursionlimit(2000)  # default is usually 1000
+    def __init__(self, dfs: 'DataFlowGraph') -> None:
+        dfs.logger.info("Starting DFS to enumerate vertices")
+        preorder_nodes = dfs.dfs_enumerate_and_build_tree()
+        dfs.logger.info("Finished DFS and enumeration of vertices")
+
         self.preorder_nodes = preorder_nodes
         self.semi = {node: node.get_dfs_node_id()
                      if node is not None else None for node in preorder_nodes}
@@ -212,15 +215,45 @@ class LengauerTarjanAlgorithm:
         self.dom[start_node] = None
 
 
+class DominateNodesReachabilityAlgorithm:
+    """
+    The class that implementes the dominate nodes computation in O(|V| * |E|).
+    """
+    def __init__(self, start_node: Node,  dfg: 'DataFlowGraph') -> None:
+        self.start_node = start_node
+        self.dfg = dfg
 
 
-# class SpecializeDominatorNodesAlgorithm:
-    #"""
-    #Speciallize class that implements the algorithm for the dominator nodes of specific
-    #code in O(|V| + |E|)
-    #"""
-    # def __init__(self) -> None:
-    #     pass
+    def get_dominate_node_names(self, reach_node: Node) -> List[str]:
+        """
+        The time complexity of finding all come-before nodes for reach node reach_node
+        is O(|E| * |V|).
+        First we need to check if the vertex reach_node is reachable from the start node.
+        If not, there are no come-before nodes.
+        For each vertex v in the graph, the algorithm check if the node reach_node is reachable.
+        If the reach_node is not reachable, then the vertex v is a come-before-node.
+        """
+        if not self.dfg.can_reach_node(reach_node, None):
+            return []
+
+        dominate_node_names = [str(self.start_node)]
+        for skip_node in self.dfg.get_nodes():
+            if skip_node == self.start_node or \
+                skip_node == reach_node: # pylint: disable=consider-using-in
+                continue
+            if not self.dfg.can_reach_node(reach_node, skip_node):
+                dominate_node_names.append(str(skip_node))
+
+        return dominate_node_names
+
+
+class SpecializeDominatorNodesAlgorithm:
+    """
+    Speciallize class that implements the algorithm for the dominator nodes of specific
+    code in O(|V| + |E|)
+    """
+    def __init__(self, preorder_nodes) -> None:
+        pass
 
 
     # 1. DFS in order to enumerate nodes
@@ -360,6 +393,7 @@ class DataFlowGraph:
         Depth first search of data flow graph starting from start_node
         where each node is enumerated in the order of a DFS search.
         """
+        sys.setrecursionlimit(2000)  # default is usually 1000
         self.logger.info("Starting to enumerate nodes by DFS")
         map_visit_state = {node: VisitState.NOT_VISITED for node in self.nodes}
         preorder_nodes = [None] * len(self.nodes)
@@ -391,10 +425,7 @@ class DataFlowGraph:
         bucket - bucket
         dom -dom
     """
-        self.logger.info("Starting DFS to enumerate vertices")
-        preorder_nodes = self.dfs_enumerate_and_build_tree()
-        self.logger.info("Finished DFS and enumeration of vertices")
-        len_tar = LengauerTarjanAlgorithm(preorder_nodes)
+        len_tar = LengauerTarjanAlgorithm(self)
 
         self.logger.info("Starting compute semi dominators and implicit dominators")
         len_tar.compute_semi_dominators_and_implicit_dominators()
@@ -428,17 +459,9 @@ class DataFlowGraph:
     If the reach_node is not reachable, then the vertex v is a come-before-node.
 
         """
-        if not self.can_reach_node(reach_node, None):
-            return []
-        dominate_nodes = [str(self.start_node)]
-        for skip_node in self.nodes:
-            if skip_node == self.start_node or \
-                skip_node == reach_node: # pylint: disable=consider-using-in
-                continue
-            if not self.can_reach_node(reach_node, skip_node):
-                dominate_nodes.append(str(skip_node))
+        reach_alg = DominateNodesReachabilityAlgorithm(self.start_node, self)
 
-        return dominate_nodes
+        return reach_alg.get_dominate_node_names(reach_node)
 
 
     def get_dominate_nodes(self, reach_node_name: str,
