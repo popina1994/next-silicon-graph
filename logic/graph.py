@@ -4,6 +4,7 @@ Module providing a support for data flow graph.
 from typing import List, Dict, Tuple, Set
 from enum import Enum
 from collections import deque
+import sys
 
 class Node:
     """ Class representing a node. """
@@ -17,7 +18,7 @@ class Node:
         self.name = name
         self.out_edges = []
         self.in_edges = []
-        self.dfs_node_id = -1
+        self.dfs_node_id = None
         self.parent_node = None
 
 
@@ -109,6 +110,7 @@ class DominateNodesSearchAlg(Enum):
     """
     REACHABILITY = 1
     LENGAUER_TARJAN_NON_OPTIMIZED = 2
+    SPECIALIZED = 4
     #LENGAUER_TARJAN_OPTIMIZED  = 3
 
 
@@ -126,8 +128,10 @@ class LengauerTarjanAlgorithm:
 
 
     def __init__(self, preorder_nodes: List[Node]) -> None:
+        sys.setrecursionlimit(2000)  # default is usually 1000
         self.preorder_nodes = preorder_nodes
-        self.semi = {node: node.get_dfs_node_id() for node in preorder_nodes}
+        self.semi = {node: node.get_dfs_node_id()
+                     if node is not None else None for node in preorder_nodes}
         self.bucket = {node: set() for node in preorder_nodes}
         self.dom = {node: None for node in preorder_nodes}
 
@@ -138,7 +142,7 @@ class LengauerTarjanAlgorithm:
     def get_immediate_domminator(self, node: Node)->Node:
         """
         After the algorithm finishes returns imme"""
-        return self.dom[node]
+        return self.dom.get(node, None)
 
 
     def link(self, node_v: Node, node_w: Node)->None:
@@ -175,7 +179,12 @@ class LengauerTarjanAlgorithm:
         Steps 2 and 3 of Lengauer-Tarjan algorithm
         """
         for node_w in self.preorder_nodes[:0:-1]:
+            if node_w is None:
+                continue
             for prev_node in node_w.get_in_edges():
+                if prev_node.get_dfs_node_id() is None:
+                    continue
+                # print(prev_node, node_w)
                 node_u = self.eval(prev_node)
                 if self.semi[node_u] < self.semi[node_w]:
                     self.semi[node_w] = self.semi[node_u]
@@ -196,9 +205,31 @@ class LengauerTarjanAlgorithm:
         Steps 4 and 3 of Lengauer-Tarjan algorithm
         """
         for node_w in self.preorder_nodes[1:]:
+            if node_w is None:
+                continue
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
                 self.dom[node_w] = self.dom[self.dom[node_w]]
         self.dom[start_node] = None
+
+
+
+
+# class SpecializeDominatorNodesAlgorithm:
+    #"""
+    #Speciallize class that implements the algorithm for the dominator nodes of specific
+    #code in O(|V| + |E|)
+    #"""
+    # def __init__(self) -> None:
+    #     pass
+
+
+    # 1. DFS in order to enumerate nodes
+    # 2. Get the path to the reach node by going from the reach node to the start_node
+    # 3. For all other nodes, check if they contain a link towards any element in this path.
+    #    Simple preoirder node - nodes on the path and check all links to see
+    # if the destination is in the path.
+    # if it is mark the range for deletion
+    # Finally, just iterated over the path and see if any nodes are remaining.
 
 
 
@@ -242,6 +273,15 @@ class DataFlowGraph:
 
         self.cur_preorder_idx = None
 
+
+    def __str__(self) -> str:
+        out = f"START NODE: {self.start_node}"
+        for node in self.nodes:
+            out += f"\n NODE: {node}"
+            for out_edge in node.get_out_edges():
+                out += f"\n EDGE: ({node},{out_edge})"
+
+        return out
 
     def get_nodes(self)->List[Node]:
         """
@@ -329,7 +369,7 @@ class DataFlowGraph:
         return preorder_nodes
 
 
-    def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node):
+    def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node)->List[str]:
         """
         The algorithm is one to one implementation of the following immediate
         dominator set algorithm:
@@ -364,10 +404,13 @@ class DataFlowGraph:
         len_tar.explicit_dominator(self.start_node)
         self.logger.info("Ending building immediate dominators tree")
 
+        self.logger.info(f"Getting immediate domminator node for {reach_node}")
         imm_dom_node =  len_tar.get_immediate_domminator(reach_node)
+        self.logger.info(f"The immediate domminator node for {reach_node} is {imm_dom_node}")
         dom_nodes_a = []
         while imm_dom_node is not None:
             dom_nodes_a.append(imm_dom_node)
+            self.logger.info(f"Getting immediate domminator node for {imm_dom_node}")
             imm_dom_node = len_tar.get_immediate_domminator(imm_dom_node)
 
         dom_node_names = [node.get_name() for node in dom_nodes_a]
@@ -376,7 +419,7 @@ class DataFlowGraph:
         return dom_node_names
 
 
-    def get_dominate_nodes_reachability_alg(self, reach_node: Node):
+    def get_dominate_nodes_reachability_alg(self, reach_node: Node) -> List[str]:
         """
     The time complexity of finding all come-before nodes for reach node reach_node is O(|E| * |V|).
     First we need to check if the vertex reach_node is reachable from the start node.
@@ -423,6 +466,8 @@ class DataFlowGraph:
             raise NodeDoesNotExist(f"Node to reach {reach_node_name} does not exist")
         reach_node = self.map_name_to_node[reach_node_name]
         dominate_node_names = []
+        self.logger.info("Dominate nodes for the data flow graph {self}"
+                         "and the reach node {reach_node_name} has started")
         if search_alg == DominateNodesSearchAlg.REACHABILITY:
             self.logger.info("Computing dominate nodes using reachability algorithm")
             dominate_node_names = self.get_dominate_nodes_reachability_alg(reach_node)

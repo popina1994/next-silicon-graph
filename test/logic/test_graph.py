@@ -3,7 +3,10 @@ Contains unit tests for the data flow graph class.
 """
 import logging
 import unittest
+import random
+import time
 from logic.graph import DataFlowGraph, DominateNodesSearchAlg
+
 
 class TestDataFlowGraph(unittest.TestCase):
     """
@@ -12,6 +15,35 @@ class TestDataFlowGraph(unittest.TestCase):
     def setUp(self) -> None:
         self.logger = logging.getLogger('dummy_logger')
         self.logger.setLevel(logging.DEBUG)
+
+    @staticmethod
+    def random_graph(num_nodes: int, edge_prob: float, seed: int, logger)->DataFlowGraph:
+        """
+        Generate a random data flow graph with num_nodes where the probability
+        of an edge between two nodes is edge_prob. For the probability distribution
+        we use seed seed
+        """
+        node_names = [str(i) for i in range(num_nodes - 1)]
+        edges = []
+        random.seed(seed)
+        for node_name_1 in node_names:
+            for node_name_2 in node_names:
+                if node_name_1 != node_name_2 and random.random() < edge_prob:
+                    # print("EDGE", node_name_1, node_name_2)
+                    edge = [node_name_1, node_name_2]
+                    edges.append(edge)
+
+        start_node_name = str(num_nodes  - 1)
+        node_names.append(start_node_name)
+        for node_name in node_names:
+            if start_node_name != node_name and random.random() < edge_prob:
+                edge = [start_node_name, node_name]
+                edges.append(edge)
+
+
+        return DataFlowGraph(node_names=node_names, edges=edges,
+                             start_node_name=start_node_name, logger=logger)
+
 
 
     def test_dgf_create(self):
@@ -122,6 +154,32 @@ class TestDataFlowGraph(unittest.TestCase):
                                     DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED)
             self.assertEqual(set(dominate_node_names),
                              set(map_node_name_dominator_names[node_name]))
+
+
+    def test_large_data_flow_graphs(self):
+        """
+        Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
+        for each node.
+        """
+        dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)
+        # print(dfg)
+        for node in dfg.get_nodes():
+            node_name = str(node)
+            start = time.time()
+            dominate_node_names_lt = dfg.get_dominate_nodes(node_name,
+                                    DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED)
+            end = time.time()
+            print(f"Execution time Lengauer Tarjan: {end - start:.6f} seconds")
+            start = time.time()
+            dominate_node_names_reach = dfg.get_dominate_nodes(node_name,
+                                    DominateNodesSearchAlg.REACHABILITY)
+            end = time.time()
+            print(f"Execution time Reachability: {end - start:.6f} seconds")
+            self.assertEqual(set(dominate_node_names_lt),
+                             set(dominate_node_names_reach))
+
+
+
 
 
 if __name__ == '__main__':
