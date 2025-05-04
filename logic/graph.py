@@ -5,88 +5,7 @@ from typing import List, Dict, Tuple, Set
 from enum import Enum
 from collections import deque
 import sys
-
-class Node:
-    """ Class representing a node. """
-    name: str
-    out_edges: List['Node']
-    in_edges: List['Node']
-    dfs_node_id: int
-    parent_node: 'Node'
-
-    def __init__(self, name: str):
-        self.name = name
-        self.out_edges = []
-        self.in_edges = []
-        self.dfs_node_id = None
-        self.parent_node = None
-
-
-    def add_out_edges(self, out_node: 'Node'):
-        """
-        Adds out edges in the data flow graph.
-        """
-        self.out_edges.append(out_node)
-
-
-    def add_in_edges(self, in_node: 'Node'):
-        """
-        Adds in edges in the data flow graph.
-        """
-        self.in_edges.append(in_node)
-
-
-    def get_out_edges(self):
-        """
-        Returns out edges in the data flow graph.
-        """
-        return self.out_edges
-
-
-    def get_in_edges(self):
-        """
-        Returns in edges in the data flow graph.
-        """
-        return self.in_edges
-
-    def __str__(self) -> str:
-        return self.name
-
-
-    def set_dfs_node_id(self, node_id: int):
-        """
-        Sets the id to  be node_id. Used to enumerate nodes in a dfs tree.
-        """
-        self.dfs_node_id = node_id
-
-
-    def get_dfs_node_id(self)-> int:
-        """
-        Gets the id to  be node_id.
-        """
-        return self.dfs_node_id
-
-
-    def set_parent_node(self, par_node: 'Node'):
-        """
-        Sets the parent node in DFS tree to par_node
-        """
-        self.parent_node = par_node
-
-
-    def get_parent_node(self):
-        """
-        Gets the parent node in DFS tree.
-        """
-        return self.parent_node
-
-
-    def get_name(self) -> str:
-        """
-        Returns the name of the node. It is unique.
-        """
-        return self.name
-
+from logic.node import Node
 
 class NodeDoesNotExist(Exception):
     """
@@ -252,10 +171,77 @@ class SpecializeDominatorNodesAlgorithm:
     Speciallize class that implements the algorithm for the dominator nodes of specific
     code in O(|V| + |E|)
     """
-    def __init__(self, preorder_nodes) -> None:
-        pass
+    def __init__(self, start_node: Node, dfg: 'DataFlowGraph', logger) -> None:
+        self.logger = logger
+        self.logger.info("Starting DFS enumeration for the specialized graph")
+        self.start_node = start_node
+        self.dfg = dfg
+        preorder_nodes = dfg.dfs_enumerate_and_build_tree()
+        self.preorder_nodes = preorder_nodes
+        self.logger.info("Ending DFS enumeration for the specialized graph")
 
 
+    def get_dominate_node_names(self, reach_node: Node):
+        """
+        Returns all the dominate nodes for the node reach_node.
+        It computes by enumerating nodes in the DFS tree using DFS search.
+        Then extracts the path to the root for reach_node.
+        Then for each nodes, checks if there is a bypass towards
+        some nodes so other nodes in the path are skipped.
+        Then it removes all nodes that are skipped and return the remaining nodes as
+        dominating ones. """
+        self.logger.info("Computing path to the reach node")
+        path_nodes = [reach_node]
+        cur_node = reach_node
+        while cur_node.get_parent_node() is not None:
+            path_nodes.append(cur_node.get_parent_node())
+            cur_node = cur_node.get_parent_node()
+
+
+        path_nodes.reverse()
+        # path_nodes.pop()
+        self.logger.info(f"Computed path to the reach node {path_nodes}")
+        path_nodes_to_delete = [0] * len(path_nodes)
+        if path_nodes[0] != self.start_node:
+            # Node not reachable
+            return []
+
+
+        self.logger.info("Starting computation of"
+                         "the least recent ancesstor in the that to each node")
+        map_path_nodes = {node: path_idx for path_idx, node in enumerate(path_nodes)}
+        map_common_anc = self.dfg.dfs_enumerate_and_build_tree_compute_common(path_nodes)
+        self.logger.info(f"ending computation of the least "
+                         f"recent ancesstor in the that to each node {map_common_anc}")
+
+        self.logger.info("Starting markation of parts of the "
+                         "path to delete of the specialized algorithm")
+        for node in self.preorder_nodes:
+            for out_node in node.get_out_edges():
+                if out_node in map_path_nodes:
+                    out_node_path_idx = map_path_nodes[out_node]
+                    path_idx_anc = map_common_anc[node]
+                    if path_idx_anc + 1 <= out_node_path_idx:
+                        path_nodes_to_delete[path_idx_anc + 1] -= 1
+                        path_nodes_to_delete[out_node_path_idx] += 1
+
+        self.logger.info("Ending markation of parts of path to delete of the"
+                                  "specialized algorithm")
+        dominate_node_names = []
+
+        self.logger.info("Starting computation of the dominate nodes using "
+                                " the specialized algorithm")
+        cur_sum = 0
+        for path_node_idx, path_node_to_delete in enumerate(path_nodes_to_delete):
+            cur_sum += path_node_to_delete
+            if cur_sum >= 0 and path_nodes[path_node_idx] != reach_node:
+                self.logger.info(f"N: {path_nodes[path_node_idx]} RN: {reach_node}")
+                dominate_node_names.append(str(path_nodes[path_node_idx]))
+
+        self.logger.info(f"Ending computation of the dominate nodes using "
+                                 f"the specialized algorithm: {dominate_node_names}")
+
+        return dominate_node_names
     # 1. DFS in order to enumerate nodes
     # 2. Get the path to the reach node by going from the reach node to the start_node
     # 3. For all other nodes, check if they contain a link towards any element in this path.
@@ -273,12 +259,8 @@ class DataFlowGraph:
     """
     nodes: List[Node]
     start_node: Node
-    preorder_nodes: List[Node]
-    semi: Dict[Node, int]
-    bucket: Dict[Node, Set[Node]]
-    ancestor: Dict[Node, Node | None]
-    label: Dict[Node, Node]
-    dom: Dict[Node, Node]
+    cur_preorder_idx: int
+    cur_path_idx: int
 
     def __init__(self, node_names: List[str], edges: List[Tuple[str, str]], start_node_name: str,
                  logger):
@@ -305,6 +287,7 @@ class DataFlowGraph:
             node_out.add_in_edges(node_in)
 
         self.cur_preorder_idx = None
+        self.cur_path_idx = None
 
 
     def __str__(self) -> str:
@@ -403,6 +386,48 @@ class DataFlowGraph:
         return preorder_nodes
 
 
+    def dfs_enumerate_and_build_tree_common_wrapper(self, cur_node: Node,
+                                             s_path_nodes: Set[Node],
+                                             map_common_anc: Dict[Node, int],
+                                             cur_path_idx: int):
+        """
+        It continues DFS search of a data flow graph by visiting current node cur_node,
+        updating dfs_node_id of cur_node to the next available id
+        updating the state of node in  map_visit_state
+        """
+
+        map_common_anc[cur_node] = cur_path_idx
+        self.logger.info(f"Current node {cur_node}, {cur_path_idx}")
+
+        # map_visit_state[cur_node] = VisitState.VISITED
+        for adj_node in cur_node.get_out_edges():
+            if (adj_node not in s_path_nodes) and (map_common_anc[adj_node] is None):
+                self.dfs_enumerate_and_build_tree_common_wrapper(adj_node,
+                                    s_path_nodes, map_common_anc, cur_path_idx)
+
+
+
+
+    def dfs_enumerate_and_build_tree_compute_common(self, path_nodes: List[Node]):
+        """
+        For each node e, computes the minimum node id of all nodes
+        in the path_nodes that can reach the node e without going through the path.
+        """
+        sys.setrecursionlimit(2000)  # default is usually 1000
+        self.logger.info("Starting to compute most common ancesstor with path nodes by DFS")
+        map_common_anc = {node: None for node in self.nodes}
+        for path_node_idx, path_node in enumerate(path_nodes):
+            map_common_anc[path_node] = path_node_idx
+
+        s_path_nodes = set(path_nodes)
+        for path_node_idx, path_node in enumerate(path_nodes):
+            self.cur_path_idx = path_node_idx
+            self.dfs_enumerate_and_build_tree_common_wrapper(path_node,
+                                                s_path_nodes, map_common_anc, path_node_idx)
+
+        return map_common_anc
+
+
     def get_dominate_lengauer_tarjan_fast_algorithm(self, reach_node: Node)->List[str]:
         """
         The algorithm is one to one implementation of the following immediate
@@ -464,6 +489,15 @@ class DataFlowGraph:
         return reach_alg.get_dominate_node_names(reach_node)
 
 
+    def get_dominate_nodes_specialized_algorithm(self, reach_node: Node) -> List[str]:
+        """
+    The time complexity of finding all come-before nodes for reach node reach_node is O(|E| + |V|).
+        """
+        reach_alg = SpecializeDominatorNodesAlgorithm(self.start_node, self, self.logger)
+
+        return reach_alg.get_dominate_node_names(reach_node)
+
+
     def get_dominate_nodes(self, reach_node_name: str,
         search_alg: DominateNodesSearchAlg=
         DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED) ->List[str]:
@@ -497,5 +531,8 @@ class DataFlowGraph:
         elif search_alg == DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED:
             self.logger.info("Computing dominate nodes using lengauer-tarjan algorithm")
             dominate_node_names = self.get_dominate_lengauer_tarjan_fast_algorithm(reach_node)
+        elif search_alg == DominateNodesSearchAlg.SPECIALIZED:
+            self.logger.info("Computing dominate nodes using specialized algorithm")
+            dominate_node_names = self.get_dominate_nodes_specialized_algorithm(reach_node)
 
         return dominate_node_names
