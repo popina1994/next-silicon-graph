@@ -158,7 +158,7 @@ class TestDataFlowGraph(unittest.TestCase):
 
     def test_dominate_nodes_specialized_one_node(self):
         """
-        Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
+        Tests the specialized algorithm for the computation of the dominate nodes
         for one node.
         """
         list_node_names = ["R", "C", "F", "I", "K", "G",  "J",  "B", "E", "H",  "A",  "D", "L"]
@@ -175,7 +175,7 @@ class TestDataFlowGraph(unittest.TestCase):
 
     def test_dominate_nodes_specialized_one_node_2(self):
         """
-        Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
+        Tests the specialized algorithm for the computation of the dominate nodes
         for one node.
         """
         list_node_names = ["R", "C", "F", "I", "K", "G",  "J",  "B", "E", "H",  "A",  "D", "L"]
@@ -192,7 +192,7 @@ class TestDataFlowGraph(unittest.TestCase):
 
     def test_dominate_nodes_specialized_all_nodes(self):
         """
-        Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
+        Tests the specialized algorithm for the computation of the dominate nodes
         for each node.
         """
         list_node_names = ["R", "C", "F", "I", "K", "G",  "J",  "B", "E", "H",  "A",  "D", "L"]
@@ -242,7 +242,7 @@ class TestDataFlowGraph(unittest.TestCase):
     # @unittest.skip("Skipping this test for now")
     def test_large_data_flow_graphs_specialized(self):
         """
-        Tests the Lengauer-Tarjan algorithm for the computation of the dominate nodes
+        Tests the specialized algorithm for the computation of the dominate nodes
         for each node.
         """
         dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)

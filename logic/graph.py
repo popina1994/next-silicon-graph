@@ -54,6 +54,7 @@ class DominateNodesAlgorithm(ABC):
 
 
 class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
+    # pylint: disable=too-many-instance-attributes
     """
     Encapsulates the current state information used in
     Lenagauer Tarjan Algorithm.
@@ -265,13 +266,22 @@ class DominatorNodesSpecializedAlgorithm:
 
     def compute_dominate_nodes(self, reach_node: Node):
         """
-
-        It computes by enumerating nodes in the DFS tree using DFS search.
-        Then extracts the path to the root for reach_node.
-        Then for each nodes, checks if there is a bypass towards
-        some nodes so other nodes in the path are skipped.
-        Then it removes all nodes that are skipped and return the remaining nodes as
-        dominating ones. """
+        This function computes the dominate nodes of the node reach_node in several steps.
+        Step 1. Enumerating nodes in the DFS tree using DFS search.
+                Time complexity of this step is (O(|E| + |V|)).
+        Step 2. Computing the path path_nodes to the root of
+                data flow graph for the node reach_node.
+                Time complexity of this step is (O(len(path_nodes)).
+        Step 3. For each node in the data flow graph not belonging to the path,
+                the functions checks if this node is a part of another path to the existing node
+                in the path_nodes. In this case, there are two paths to this node:
+                one through the path_nodes and one bypassing some of the nodes, we mark
+                all the ranges of the nodes that are bypassed to be marked for the removal.
+                Complexity of this is O(|E| + |V|).
+        Step 4. Removing all nodes that are marked for removal by using different array.
+                Complexity of this is O(len(path_nodes)).
+        Step 5. Returning the non-removed nodes as the dominating ones for reach_node.
+        """
         self.logger.info("Computing path to the reach node")
         path_nodes = [reach_node]
         cur_node = reach_node
@@ -342,7 +352,6 @@ class DataFlowGraph:
     nodes: List[Node]
     start_node: Node
     cur_preorder_idx: int
-    cur_path_idx: int
 
     def __init__(self, node_names: List[str], edges: List[Tuple[str, str]], start_node_name: str,
                  logger):
@@ -475,30 +484,33 @@ class DataFlowGraph:
 
 
     def dfs_enumerate_and_build_tree_common_wrapper(self, cur_node: Node,
-                                             s_path_nodes: Set[Node],
                                              map_common_anc: Dict[Node, int],
                                              cur_path_idx: int):
         """
-        It continues DFS search of a data flow graph by visiting current node cur_node,
-        updating dfs_node_id of cur_node to the next available id
-        updating the state of node in  map_visit_state
+        It follows DFS search of a data flow graph by visiting current node cur_node,
+        by updating map_common_anc of cur_node to the node with the minimal id
+        that reach it: cur_path_idx
         """
-
         map_common_anc[cur_node] = cur_path_idx
         self.logger.info(f"Current node {cur_node}, {cur_path_idx}")
 
         for adj_node in cur_node.get_out_edges():
-            if (adj_node not in s_path_nodes) and (map_common_anc[adj_node] is None):
+            if map_common_anc[adj_node] is None:
                 self.dfs_enumerate_and_build_tree_common_wrapper(adj_node,
-                                    s_path_nodes, map_common_anc, cur_path_idx)
+                                    map_common_anc, cur_path_idx)
 
 
 
 
     def dfs_enumerate_and_build_tree_compute_common(self, path_nodes: List[Node]):
         """
-        For each node e, computes the minimum node id of all nodes
-        in the path_nodes that can reach the node e without going through the path.
+        For each node e, the function computes the minimum node id of all nodes
+        in the path_nodes that can reach the node e without going through the
+        path or through the nodes that are reachable by the node with lower node id.
+        It works by using DFS where the starting nodes are nodes of path_nodes increasingly.
+        Whenver the node is visited in any DFS search, it is marked visited
+        (map_common_anc entry is updated), and will not be visited again.
+        Time complexity: O(|V| + |E|).
         """
         sys.setrecursionlimit(2000)  # default is usually 1000
         self.logger.info("Starting to compute most common ancesstor with path nodes by DFS")
@@ -506,11 +518,9 @@ class DataFlowGraph:
         for path_node_idx, path_node in enumerate(path_nodes):
             map_common_anc[path_node] = path_node_idx
 
-        s_path_nodes = set(path_nodes)
         for path_node_idx, path_node in enumerate(path_nodes):
-            self.cur_path_idx = path_node_idx
             self.dfs_enumerate_and_build_tree_common_wrapper(path_node,
-                                                s_path_nodes, map_common_anc, path_node_idx)
+                                                map_common_anc, path_node_idx)
 
         return map_common_anc
 
@@ -519,21 +529,25 @@ class DataFlowGraph:
         search_alg: DominateNodesSearchAlg=
         DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED) ->List[str]:
         """
-    Find the dominator nodes for a given target node in a graph.
-    A node is considered a dominator of the target node if all paths from the start node
-    to the target node lead over the dominator node.
+    Find the dominator nodes for a given target node in a data flow graph.
+
+    A node is considered a dominator of the target node if every path from the start node
+    to the target node passes through it. If the target node is the start node itself,
+    the returned list is empty since no other nodes dominate it.
+
     Args:
-        reach_node_name (str): The name of the target node for which dominators
-                            need to be identified.
+        reach_node_name (str): The name of the target (reachable) node.
+        search_alg (DominateNodesSearchAlg, optional): The algorithm to use for computing
+            dominators. Defaults to LENGAUER_TARJAN_NON_OPTIMIZED.
+
     Returns:
-        list of str: A list of node names that dominate the target node. For non-start node,
-                    this list will include the start node and any node whose removal makes
-                    the target node unreachable. If the reach node is start_node,
-                    this list will be empty.
+        List[str]: A list of node names that dominate the given target node. This will
+        include the start node and any intermediate nodes whose removal would make
+        the target node unreachable.
+
     Raises:
-        NodeDoesNotExist: If the reach_node_name does not correspond to an existing node
-                           in the graph.
-    """
+        NodeDoesNotExist: If the given node name does not exist in the graph.
+        """
         if reach_node_name == self.start_node.get_name():
             return []
         if not reach_node_name in self.map_name_to_node:

@@ -74,7 +74,7 @@ class Node:
         self.parent_node = par_node
 
 
-    def get_parent_node(self):
+    def get_parent_node(self) -> 'Node':
         """
         Gets the parent node in DFS tree.
         """
