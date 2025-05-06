@@ -29,7 +29,6 @@ class TestDataFlowGraph(unittest.TestCase):
         for node_name_1 in node_names:
             for node_name_2 in node_names:
                 if node_name_1 != node_name_2 and random.random() < edge_prob:
-                    # print("EDGE", node_name_1, node_name_2)
                     edge = [node_name_1, node_name_2]
                     edges.append(edge)
 
@@ -223,7 +222,6 @@ class TestDataFlowGraph(unittest.TestCase):
         for each node.
         """
         dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)
-        # print(dfg)
         for node in dfg.get_nodes():
             node_name = str(node)
             start = time.time()
@@ -246,7 +244,6 @@ class TestDataFlowGraph(unittest.TestCase):
         for each node.
         """
         dfg = TestDataFlowGraph.random_graph(300, 0.5, 0, self.logger)
-        # print(dfg)
         for node in dfg.get_nodes():
             node_name = str(node)
             start = time.time()

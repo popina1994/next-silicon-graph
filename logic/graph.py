@@ -130,7 +130,6 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
             for prev_node in node_w.get_in_edges():
                 if prev_node.get_dfs_node_id() is None:
                     continue
-                # print(prev_node, node_w)
                 node_u = self.eval(prev_node)
                 if self.semi[node_u] < self.semi[node_w]:
                     self.semi[node_w] = self.semi[node_u]
@@ -258,6 +257,7 @@ class DominatorNodesSpecializedAlgorithm:
         self.logger.info("Starting DFS enumeration for the specialized graph")
         self.start_node = dfg.get_start_node()
         self.dfg = dfg
+        # Step 1. Start
         preorder_nodes = dfg.dfs_enumerate_and_build_tree()
         self.preorder_nodes = preorder_nodes
         self.logger.info("Ending DFS enumeration for the specialized graph")
@@ -278,10 +278,12 @@ class DominatorNodesSpecializedAlgorithm:
                 one through the path_nodes and one bypassing some of the nodes, we mark
                 all the ranges of the nodes that are bypassed to be marked for the removal.
                 Complexity of this is O(|E| + |V|).
-        Step 4. Removing all nodes that are marked for removal by using different array.
+        Step 4. Removing all nodes that are marked for removal by using
+                different array algorithm.
                 Complexity of this is O(len(path_nodes)).
         Step 5. Returning the non-removed nodes as the dominating ones for reach_node.
         """
+        # Step 2.
         self.logger.info("Computing path to the reach node")
         path_nodes = [reach_node]
         cur_node = reach_node
@@ -291,14 +293,13 @@ class DominatorNodesSpecializedAlgorithm:
 
 
         path_nodes.reverse()
-        # path_nodes.pop()
         self.logger.info(f"Computed path to the reach node {path_nodes}")
         path_nodes_to_delete = [0] * len(path_nodes)
         if path_nodes[0] != self.start_node:
             # Node not reachable
             return
 
-
+        # Step 3. computing bypass routes.
         self.logger.info("Starting computation of"
                          "the least recent ancesstor in the that to each node")
         map_path_nodes = {node: path_idx for path_idx, node in enumerate(path_nodes)}
@@ -306,6 +307,7 @@ class DominatorNodesSpecializedAlgorithm:
         self.logger.info(f"ending computation of the least "
                          f"recent ancesstor in the that to each node {map_common_anc}")
 
+        # Step 3. Marking for removal
         self.logger.info("Starting markation of parts of the "
                          "path to delete of the specialized algorithm")
         for node in self.preorder_nodes:
@@ -321,6 +323,7 @@ class DominatorNodesSpecializedAlgorithm:
                                   "specialized algorithm")
         dominate_node_names = []
 
+        # Step 4. and Step 5.
         self.logger.info("Starting computation of the dominate nodes using "
                                 " the specialized algorithm")
         cur_sum = 0
