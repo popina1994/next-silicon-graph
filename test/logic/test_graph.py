@@ -247,7 +247,7 @@ class TestDataFlowGraph(unittest.TestCase):
         for node in dfg.get_nodes():
             node_name = str(node)
             start = time.time()
-            dominate_node_names_lt = dfg.get_dominate_nodes(node_name,
+            dominate_node_names_spec = dfg.get_dominate_nodes(node_name,
                                     DominateNodesSearchAlg.SPECIALIZED)
             end = time.time()
             print(f"Execution time Specialized: {end - start:.6f} seconds")
@@ -256,8 +256,30 @@ class TestDataFlowGraph(unittest.TestCase):
                                     DominateNodesSearchAlg.REACHABILITY)
             end = time.time()
             print(f"Execution time Reachability: {end - start:.6f} seconds")
-            self.assertEqual(set(dominate_node_names_lt),
+            self.assertEqual(set(dominate_node_names_spec),
                              set(dominate_node_names_reach))
+
+    # @unittest.skip("Skipping this test for now")
+    def test_large_large_data_flow_graphs_lengauer_tarjan_and_specialized(self):
+        """
+        Tests the specialized algorithm and Lengauer Tarjan
+        for the computation of the dominate nodes for for large graphs.
+        """
+        dfg = TestDataFlowGraph.random_graph(1000, 0.5, 0, self.logger)
+        for node in dfg.get_nodes():
+            node_name = str(node)
+            start = time.time()
+            dominate_node_names_lt = dfg.get_dominate_nodes(node_name,
+                                    DominateNodesSearchAlg.LENGAUER_TARJAN_NON_OPTIMIZED)
+            end = time.time()
+            print(f"Execution time Lengauer Tarjan: {end - start:.6f} seconds")
+            start = time.time()
+            dominate_node_names_spec = dfg.get_dominate_nodes(node_name,
+                                    DominateNodesSearchAlg.SPECIALIZED)
+            end = time.time()
+            print(f"Execution time Specialized: {end - start:.6f} seconds")
+            self.assertEqual(set(dominate_node_names_lt),
+                             set(dominate_node_names_spec))
 
 
 

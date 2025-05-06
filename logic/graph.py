@@ -356,8 +356,8 @@ class DataFlowGraph:
     start_node: Node
     cur_preorder_idx: int
 
-    def __init__(self, node_names: List[str], edges: List[Tuple[str, str]], start_node_name: str,
-                 logger):
+    def __init__(self, node_names: List[str], edges: List[Tuple[str, str]],
+                 start_node_name: str, logger):
         self.logger = logger
         self.nodes = [None] * len(node_names)
         self.map_name_to_node = {}
