@@ -65,6 +65,7 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
     semi: Dict[Node, int]
     # Denotes a set of nodes to which the key is an semi-dominator.
     bucket: Dict[Node, Set[Node]]
+    # Denotes a root of the tree to which the node belongs.
     ancestor: Dict[Node, Node | None]
     label: Dict[Node, Node]
     # For each key, it stores its corresponding immediate dominator.
@@ -115,7 +116,13 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
 
     def eval(self, node_v: Node | None) -> Node:
         """
-        One to one mapping to the function in the paper
+        One to one mapping to the function in the paper.
+        Combination of union by rank and path compression.
+        ancestor dictionary corresponds to the rank in union by rank algorithms.
+        labels track the smallest ancestor for the specific node.
+        See papers for the complexity:
+        https://dl.acm.org/doi/pdf/10.1145/322154.322161
+        Alse see: https://dl.acm.org/doi/pdf/10.1145/321879.321884
         """
         if self.ancestor[node_v] is None: # pylint: disable=no-else-return
             return node_v
@@ -141,6 +148,11 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
                 # This is an advancded implementation of Theorem 4.
                 # self.eval does this efficiently instead of traversing every time to the
                 # root path, it immediately discovers in O(log |V|).
+                # This works because we are going right to left in the preorder way of the
+                # nodes. The only nodes we can reach are the ones with the higher id than
+                # the current one or the direct one. But for the ones with the higer id
+                # semi would store its parent or other smaller it which can be smaller than our
+                # id or semi.
                 node_u = self.eval(prev_node)
                 if self.semi[node_u] < self.semi[node_w]:
                     self.semi[node_w] = self.semi[node_u]
@@ -148,7 +160,7 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
             self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
             # Set ancestor of node_w to be its parent.
             self.link(node_w.get_parent_node(), node_w)
-            # Step 3.
+            # Step 3. Corollary 1 applied.
             bucket_par_w_copy = self.bucket[node_w.get_parent_node()].copy()
             for node_v in bucket_par_w_copy:
                 self.bucket[node_w.get_parent_node()].remove(node_v)
@@ -170,6 +182,7 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
             if node_w is None:
                 continue
             # Corollary 1 appplied, the second case.
+            # The first case is covered in the Step 3.
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
                 self.dom[node_w] = self.dom[self.dom[node_w]]
         self.dom[start_node] = None
@@ -178,7 +191,11 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
     def compute_dominate_nodes(self, reach_node: Node):
         """
         https://dl.acm.org/doi/pdf/10.1145/357062.357071 known as Lengauer-Tarjan algorithm.
-        The time complexity of the algorithm is O(|E| * log |V|)
+        The time complexity of the algorithm is O(|E| * log |V|).
+        With regards to the time complexities of the path compressions
+             (where |E| log |V| comes from):
+        https://dl.acm.org/doi/pdf/10.1145/322154.322161
+        Alse see: https://dl.acm.org/doi/pdf/10.1145/321879.321884 .
 
         Afterwards we just traverse from the reach node through
         immediate dominator nodes to the entry node in the worst case in
@@ -193,7 +210,7 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
         vertex -> preorder_nodes
         semi - semi
         bucket - bucket
-        dom -dom
+        dom - dom
         """
         self.logger.info("Starting compute semi dominators and implicit dominators")
         self.compute_semi_dominators_and_implicit_dominators()
