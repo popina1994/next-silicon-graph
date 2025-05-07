@@ -272,11 +272,11 @@ class DominatorNodesSpecializedAlgorithm:
         Step 2. Computing the path path_nodes to the root of
                 data flow graph for the node reach_node.
                 Time complexity of this step is (O(len(path_nodes)).
-        Step 3. For each node in the data flow graph not belonging to the path,
-                the functions checks if this node is a part of another path to the existing node
-                in the path_nodes. In this case, there are two paths to this node:
-                one through the path_nodes and one bypassing some of the nodes, we mark
-                all the ranges of the nodes that are bypassed to be marked for the removal.
+        Step 3. For each node in the data flow graph, the functions checks
+                if this node is a part of another forward path to the existing node
+                in the path_nodes. In this case, there are two paths to the existing node:
+                one through the path_nodes and one bypassing some of the nodes. We mark
+                for the removal all the ranges of the nodes that are bypassed.
                 Complexity of this is O(|E| + |V|).
         Step 4. Removing all nodes that are marked for removal by using
                 different array algorithm.
