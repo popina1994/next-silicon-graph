@@ -273,7 +273,8 @@ class DominatorNodesSpecializedAlgorithm:
                 data flow graph for the node reach_node.
                 Time complexity of this step is (O(len(path_nodes)).
         Step 3. For each node in the data flow graph, the functions checks
-                if this node is a part of another forward path to the existing node
+                if this node is a part of another forward path (from a node with the lower id
+                in the path to the node with the higher id) to the existing node
                 in the path_nodes. In this case, there are two paths to the existing node:
                 one through the path_nodes and one bypassing some of the nodes. We mark
                 for the removal all the ranges of the nodes that are bypassed.
