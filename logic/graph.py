@@ -59,11 +59,15 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
     Encapsulates the current state information used in
     Lenagauer Tarjan Algorithm.
     """
+    # List of nodes in the DFS order.
     preorder_nodes: List[Node]
+    # Denotes an id of the semi-dominator.
     semi: Dict[Node, int]
+    # Denotes a set of nodes to which the key is an semi-dominator.
     bucket: Dict[Node, Set[Node]]
     ancestor: Dict[Node, Node | None]
     label: Dict[Node, Node]
+    # For each key, it stores its corresponding immediate dominator.
     dom: Dict[Node, Node]
     start_node: Node
 
@@ -127,17 +131,30 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
         for node_w in self.preorder_nodes[:0:-1]:
             if node_w is None:
                 continue
+            # Step 2.
             for prev_node in node_w.get_in_edges():
                 if prev_node.get_dfs_node_id() is None:
                     continue
+                # Searching for node_u such that there is a path through DFS tree to prev_node
+                # where all nodes have id larger than node_w and
+                # find minimum node_u (semi[node_u]) that satisfies these conditions.
+                # This is an advancded implementation of Theorem 4.
+                # self.eval does this efficiently instead of traversing every time to the
+                # root path, it immediately discovers in O(log |V|).
                 node_u = self.eval(prev_node)
                 if self.semi[node_u] < self.semi[node_w]:
                     self.semi[node_w] = self.semi[node_u]
+            # Adds the node_w to the bucket where self.semi[node_w] is a semi-dominator.
             self.bucket[self.preorder_nodes[self.semi[node_w]]].add(node_w)
+            # Set ancestor of node_w to be its parent.
             self.link(node_w.get_parent_node(), node_w)
+            # Step 3.
             bucket_par_w_copy = self.bucket[node_w.get_parent_node()].copy()
             for node_v in bucket_par_w_copy:
                 self.bucket[node_w.get_parent_node()].remove(node_v)
+                # Again search the node u to node v, such that all nodes on the path
+                # belong to DFS tree and each of them have id larger than node_v
+                # and self.semi[node_u] is the least possible.
                 node_u = self.eval(node_v)
                 if self.semi[node_u] < self.semi[node_v]:
                     self.dom[node_v] = node_u
@@ -147,11 +164,12 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
 
     def explicit_dominator(self, start_node: Node):
         """
-        Steps 4 and 3 of Lengauer-Tarjan algorithm
+        Step 4 of Lengauer-Tarjan algorithm
         """
         for node_w in self.preorder_nodes[1:]:
             if node_w is None:
                 continue
+            # Corollary 1 appplied, the second case.
             if self.dom[node_w] != self.preorder_nodes[self.semi[node_w]]:
                 self.dom[node_w] = self.dom[self.dom[node_w]]
         self.dom[start_node] = None
@@ -159,7 +177,7 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
 
     def compute_dominate_nodes(self, reach_node: Node):
         """
-        https://dl.acm.org/doi/pdf/10.1145/357062.357071 know ans Lengauer-Tarjan algorithm.
+        https://dl.acm.org/doi/pdf/10.1145/357062.357071 known as Lengauer-Tarjan algorithm.
         The time complexity of the algorithm is O(|E| * log |V|)
 
         Afterwards we just traverse from the reach node through
