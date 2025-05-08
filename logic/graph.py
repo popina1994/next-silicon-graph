@@ -147,7 +147,8 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
                 # find minimum node_u (semi[node_u]) that satisfies these conditions.
                 # This is an advancded implementation of Theorem 4.
                 # self.eval does this efficiently instead of traversing every time to the
-                # root path, it immediately discovers in O(log |V|).
+                # root path using union trees and path compression.
+                # Runtinme of all queries is O(|E| log |V|).
                 # This works because we are going right to left in the preorder way of the
                 # nodes. The only nodes we can reach are the ones with the higher id than
                 # the current one or the direct one. But for the ones with the higer id
@@ -456,7 +457,7 @@ class DataFlowGraph:
               False otherwise.
 
     Notes:
-        Complexity: O(E + V) in the worst case.
+        Complexity: O(|E| + |V|) in the worst case.
     """
         map_visit_state= {node: VisitState.NOT_VISITED for node in self.nodes}
         dq_to_visit = deque()
