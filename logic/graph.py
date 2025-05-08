@@ -117,8 +117,8 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
     def eval(self, node_v: Node | None) -> Node:
         """
         One to one mapping to the function in the paper.
-        Combination of union by rank and path compression.
-        ancestor dictionary corresponds to the rank in union by rank algorithms.
+        Implementation of find and union using path compressions (collapsing rule).
+        Ancestor dictionary corresponds to the root after the union of trees.
         labels track the smallest ancestor for the specific node.
         See papers for the complexity:
         https://dl.acm.org/doi/pdf/10.1145/322154.322161
@@ -196,7 +196,8 @@ class DominateNodesLengauerTarjanAlgorithm(DominateNodesAlgorithm):
         With regards to the time complexities of the path compressions
              (where |E| log |V| comes from):
         https://dl.acm.org/doi/pdf/10.1145/322154.322161
-        Alse see: https://dl.acm.org/doi/pdf/10.1145/321879.321884 .
+        Alse see for the reason why colapsing (compressing) rule
+        produces this complexity: https://dl.acm.org/doi/pdf/10.1145/321879.321884 .
 
         Afterwards we just traverse from the reach node through
         immediate dominator nodes to the entry node in the worst case in
